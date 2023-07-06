@@ -1,24 +1,75 @@
 import sqlite3
 
-try:
-    # Connect to the database and create tables
-    connection = sqlite3.connect('/home/nlh/projects/enClip/enClip.db')
-    cursor = connection.cursor()
+class UserDBFuncs:
+    def __init__(self, database):
+        self.database = database
 
-    # Create the userAccounts table
-    cursor.execute('CREATE TABLE IF NOT EXISTS userAccounts (id INTEGER PRIMARY KEY, username TEXT, password TEXT)')
+    def login(self, username, password):
+        connection = None
+        try:
+            connection = sqlite3.connect(self.database)
+            cursor = connection.cursor()
+            
+            # Check if the user exists in the userAccounts table
+            cursor.execute("SELECT * FROM userAccounts WHERE username=?", (username,))
+            user = cursor.fetchone()
+            
+            if user:
+                # Verify the password
+                if user[2] == password:
+                    print("Login successful")
+                    # Perform any additional actions for a successful login
+                else:
+                    print("Invalid password")
+            else:
+                print("User does not exist")
+            
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+            
+        finally:
+            if connection:
+                connection.close()
 
-    # Create the Credentials table
-    cursor.execute('CREATE TABLE IF NOT EXISTS Credentials (id INTEGER PRIMARY KEY, website_id INTEGER, username TEXT, password TEXT, FOREIGN KEY(website_id) REFERENCES userAccounts(id))')
+class NewUserDBFuncs:
+    def __init__(self, database):
+        self.database = database
 
-    # Commit the changes
-    connection.commit()
+    def insert_user(self, username, hashed_password):
+        connection = None
+        try:
+            connection = sqlite3.connect(self.database)
+            cursor = connection.cursor()
+            
+            # Insert the new user into the userAccounts table
+            cursor.execute("INSERT INTO userAccounts (username, password) VALUES (?, ?)", (username, hashed_password))
+            connection.commit()
+            
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+            
+        finally:
+            if connection:
+                connection.close()
 
-except sqlite3.Error as db_error:
-    # Handle errors related to database connection or other general database errors
-    print("Error connecting to the database:", db_error.args[0])
+    def user_exists(self, username):
+        connection = None
+        try:
+            connection = sqlite3.connect(self.database)
+            cursor = connection.cursor()
 
-finally:
-    # Perform necessary cleanup or close the connection
-    if connection:
-        connection.close()
+            # Check if the username already exists in the userAccounts table
+            cursor.execute("SELECT * FROM userAccounts WHERE username=?", (username,))
+            user = cursor.fetchone()
+            
+            if user:
+                return False 
+            else:
+                return True
+
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+            
+        finally:
+            if connection:
+                connection.close()

@@ -3,17 +3,17 @@ import sys
 import subprocess
 from PyQt5.QtWidgets import QApplication
 
-from user_manager import UserManager
+from config import database
+from valid_input import Validate
 from gui_login import Ui_LoginWindow
 
-# Path to the DB.py script
-DB_script = '/home/nlh/projects/enClip/DB.py'
+from DB import NewUserDBFuncs
 
-# Execute DB.py to create the database
+# Path to the db_startup.py script
+DB_script = '/home/nlh/projects/enClip/db_startup.py'
+
+# Execute db_startup.py to create the database and tables
 subprocess.run(['python3', DB_script])
-
-# Create an instance of the UserManager class, passing the path to your database
-#user_manager = UserManager(database='/home/nlh/projects/en-clip/en-clip.db')
 
 # Create an instance of the QApplication class
 app = QApplication(sys.argv)
