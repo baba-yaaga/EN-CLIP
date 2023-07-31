@@ -1,8 +1,5 @@
-import os
-import sys
-import subprocess
+import os, sys, subprocess
 from PyQt5.QtWidgets import QApplication
-
 from config import database
 from valid_input import Validate
 from gui_login import Ui_LoginWindow
@@ -22,11 +19,13 @@ app = QApplication(sys.argv)
 ui = Ui_LoginWindow()
 ui.setupUi(ui)
 
-# Show the login window
-ui.show()
-
 # Connect the clicked signal of the "New User" button to the show_new_user_dialog method
 ui.newUserButton.clicked.connect(ui.show_new_user_dialog)
+
+ui.loginButton.clicked.connect(ui.show_user_dialog)
+
+# Show the login window
+ui.show()
 
 # Start the application event loop
 sys.exit(app.exec_())

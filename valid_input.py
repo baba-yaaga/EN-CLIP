@@ -1,7 +1,5 @@
 from PyQt5.QtWidgets import QMessageBox
-import re
-import string
-import bcrypt
+import re, string, bcrypt
 from DB import NewUserDBFuncs
 
 class Validate:

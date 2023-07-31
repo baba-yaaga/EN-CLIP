@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3, bcrypt, config
 
 class UserDBFuncs:
     def __init__(self, database):
@@ -9,28 +9,75 @@ class UserDBFuncs:
         try:
             connection = sqlite3.connect(self.database)
             cursor = connection.cursor()
-            
-            # Check if the user exists in the userAccounts table
-            cursor.execute("SELECT * FROM userAccounts WHERE username=?", (username,))
-            user = cursor.fetchone()
-            
-            if user:
-                # Verify the password
-                if user[2] == password:
-                    print("Login successful")
-                    # Perform any additional actions for a successful login
+
+            # Retrieve the stored hashed password for the given username
+            cursor.execute("SELECT password FROM userAccounts WHERE username=?", (username,))
+            stored_password = cursor.fetchone()
+
+            if stored_password:
+                # Verify the entered password against the stored hashed password
+                if bcrypt.checkpw(password.encode(), stored_password[0]):
+                    return True
                 else:
-                    print("Invalid password")
+                    return False
             else:
-                print("User does not exist")
-            
+                return False
+
         except sqlite3.Error as db_error:
             print("Error connecting to the database:", db_error.args[0])
-            
+
         finally:
             if connection:
                 connection.close()
 
+    def show_credentials(self, username):
+        try:
+            with sqlite3.connect(self.database) as connection:
+                cursor = connection.cursor()
+                loggedInUser = username
+                user_id = self.get_user(loggedInUser)
+                if user_id:
+                    # Perform the SQL query with a join between Credentials and userAccounts tables
+                    cursor.execute("""
+                    SELECT Credentials.website_id, Credentials.username, Credentials.password
+                    FROM Credentials
+                    JOIN userAccounts ON Credentials.loggedInUser = userAccounts.id
+                    WHERE userAccounts.username = ?
+                    """, (username,))
+                    return cursor.fetchall()
+                else:
+                    return []
+
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+
+    def add_login(self, loggedInUser, website, webUsername, password):
+        try:
+            with sqlite3.connect(self.database) as connection:
+                cursor = connection.cursor()
+                user_id = self.get_user(loggedInUser)
+                # Insert the new credentials into the Credentials table
+                cursor.execute("INSERT INTO Credentials (loggedInUser, website_id, username, password) VALUES (?, ?, ?, ?)", (user_id, website, webUsername, password))
+                connection.commit()
+
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+
+    def get_user(self, loggedInUser):
+        try:
+            with sqlite3.connect(self.database) as connection:
+                cursor = connection.cursor()
+                cursor.execute("SELECT id FROM userAccounts WHERE username=?", (loggedInUser,))
+                userId = cursor.fetchone()
+                if userId:
+                    userId = userId[0]
+                    return userId
+                else:
+                    return None
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+            return None
+            
 class NewUserDBFuncs:
     def __init__(self, database):
         self.database = database
@@ -73,3 +120,4 @@ class NewUserDBFuncs:
         finally:
             if connection:
                 connection.close()
+

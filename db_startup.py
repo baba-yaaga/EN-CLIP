@@ -12,7 +12,7 @@ try:
     cursor.execute('CREATE TABLE IF NOT EXISTS userAccounts (id INTEGER PRIMARY KEY, username TEXT, password TEXT)')
 
     # Create the Credentials table
-    cursor.execute('CREATE TABLE IF NOT EXISTS Credentials (id INTEGER PRIMARY KEY, website_id INTEGER, username TEXT, password TEXT, FOREIGN KEY(website_id) REFERENCES userAccounts(id))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS Credentials (id INTEGER PRIMARY KEY, loggedInUser TEXT, website_id TEXT, username TEXT, password TEXT, FOREIGN KEY(loggedInUser) REFERENCES userAccounts(id))')
 
     # Commit the changes
     connection.commit()
