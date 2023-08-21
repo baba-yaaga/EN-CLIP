@@ -62,6 +62,22 @@ class UserDBFuncs:
 
         except sqlite3.Error as db_error:
             print("Error connecting to the database:", db_error.args[0])
+            
+    def delete_login(self, loggedInUser, website, uname):
+        try:
+            with sqlite3.connect(self.database) as connection:
+                print(loggedInUser, website, uname)
+                cursor = connection.cursor()
+                user_id = self.get_user(loggedInUser)
+                print(f"FROM DB.py{loggedInUser}, {website}, {uname}")
+                #input("Waiting...")
+                # delete a login from the Credentials table
+                cursor.execute("DELETE FROM Credentials WHERE loggedInUser = ? AND website_id = ? AND username = ?", (user_id, website, uname))
+                connection.commit()
+                return True 
+        except sqlite3.Error as db_error:
+            print("Error connecting to the database:", db_error.args[0])
+            return False
 
     def get_user(self, loggedInUser):
         try:

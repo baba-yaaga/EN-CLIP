@@ -1,8 +1,8 @@
 # Import necessary modules
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QScrollArea, QLabel, QTextEdit, QGraphicsView, QGraphicsScene
+from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QPushButton, QMessageBox, QScrollArea, QLabel, QTextEdit, QGraphicsView, QGraphicsScene
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QPixmap
-from PyQt5 import QtCore, QtWidgets, QtWidgets
+from PyQt5.QtGui import QPixmap, QImageReader
+from PyQt5 import QtCore, QtWidgets
 
 from config import database
 from valid_input import Validate
@@ -133,34 +133,44 @@ class UserWindow(QMainWindow):
         
         # Used to execute addCredentials automagically when the user acknowledges no existing credentials 
         self.credentials_empty_signal = pyqtSignal()
-        
         self.database = database
         self.username = username
+        self.clipboard_contents = []
+        # List to store the row layouts for each credential
+        self.row_layouts = []
+        # Holds credentials to be deleted from DB
+        self.to_be_deleted = []
 
         # Create a container widget
         container_widget = QWidget()
 
         # Create a layout for the container widget
-        main_layout = QVBoxLayout(container_widget)
+        self.main_layout = QVBoxLayout(container_widget)
 
         # Create a horizontal layout for the buttons
-        button_layout = QHBoxLayout()
+        self.button_layout = QHBoxLayout()
 
         # Create the clipboard button
         self.clipboard_button = QPushButton("Clipboard")
-        #self.clipboard_button.clicked.connect(self.clipboard_data_changed)
         
         # Get the application clipboard
         self.clipboard = QApplication.clipboard()
+        self.clipboard_button.clicked.connect(self.show_clipboard)
         self.clipboard.dataChanged.connect(self.clipboard_data_changed)
         
         # Create the logins button
-        logins_button = QPushButton("Logins")
-        logins_button.clicked.connect(self.show_logins)
+        self.logins_button = QPushButton("Logins")
+        self.logins_button.clicked.connect(self.show_logins)
+        
+        # Create add credentials button
+        self.add_cred_button = QPushButton("+")
+        self.add_cred_button.setMaximumSize(25,35)
+        self.add_cred_button.clicked.connect(self.add_credentials)
 
         # Add the buttons to the button layout
-        button_layout.addWidget(self.clipboard_button)
-        button_layout.addWidget(logins_button)
+        self.button_layout.addWidget(self.clipboard_button)
+        self.button_layout.addWidget(self.logins_button)
+        self.button_layout.addWidget(self.add_cred_button)
 
         # Create a scroll area
         self.scroll_area = QScrollArea()
@@ -178,35 +188,34 @@ class UserWindow(QMainWindow):
         self.scroll_area.setWidgetResizable(True)
 
         # Add the button layout and scroll area to the main layout
-        main_layout.addLayout(button_layout)
-        main_layout.addWidget(self.scroll_area)
+        self.main_layout.addLayout(self.button_layout)
+        self.main_layout.addWidget(self.scroll_area)
 
         # Set the container widget as the central widget
         self.setCentralWidget(container_widget)
 
     def clipboard_data_changed(self):
+        self.clear_scroll_layout()
 
-        # Retrieve the clipboard contents
-        clipboard_contents = [] 
-
+        mime_data = self.clipboard.mimeData()
+        
         # Handle text data
-        if self.clipboard.mimeData().hasText():             
-            clipboard_contents.append(self.clipboard.text())
+        if self.clipboard.mimeData().hasText():
+            self.clipboard_contents.append(self.clipboard.text())
         # Handle image data
-        if self.clipboard.mimeData().hasImage():
-            pixmap = self.clipboard.pixmap()
+        elif self.clipboard.mimeData().hasImage():
+            pixmap = self.clipboard.pixmap()  # This loads the image from the clipboard
             if not pixmap.isNull():
-                clipboard_contents.append(pixmap)
-
-
-        # Clear the existing contents in the scroll layout
-        #self.clear_scroll_layout()
+                self.clipboard_contents.append(pixmap)
+        self.show_clipboard()
+        
+    def show_clipboard(self):
+        self.clear_scroll_layout()
 
         # Add the clipboard contents to the scroll layout as separate QLabel widgets
-        for content in clipboard_contents:
+        for content in self.clipboard_contents:
             if isinstance(content, str):  # If the content is text, create a QLabel with the text
                 label = QLabel(content)
-                label.setTextInteractionFlags(Qt.TextSelectableByMouse)  # Allow text selection
             elif isinstance(content, QPixmap):  # If the content is an image, create a QLabel with the image
                 graphics_view = QGraphicsView()
                 scene = QGraphicsScene()
@@ -221,39 +230,43 @@ class UserWindow(QMainWindow):
             self.scroll_layout.addWidget(label)
 
         # Update the scroll area widget
-        self.scroll_area.widget().setLayout(self.scroll_layout)    
+        self.scroll_content.setLayout(self.scroll_layout)
 
-
+    def clear_layout(self, layout):
+        while layout.count():
+          item = layout.takeAt(0)
+          if item and item.widget():
+            widget = item.widget()
+            widget.deleteLater()
 
     def clear_scroll_layout(self):
-        if self.scroll_layout.count():
-            #print(self.scroll_layout.count())
-            self.item = self.scroll_layout.takeAt(0)
-            if self.item.widget():
-                self.item.widget().deleteLater()
+        # Clear each individual row layout
+        for row_layout in self.row_layouts:
+            self.clear_layout(row_layout)
+        # Clear the scroll layout
+        self.clear_layout(self.scroll_layout)
 
-    def update_scrollable_content(self, clipboard_contents):
+    def update_scrollable_content(self, credentials):
         # Clear the existing content in the scrollable area
-        if hasattr(self, 'scrollable_area'):
-            self.scrollable_area.deleteLater()
-        self.scrollable_area = QWidget()
-        layout = QVBoxLayout(self.scrollable_area)
+        self.clear_scroll_layout()
 
-        # Create a QLabel widget to display the content
-        label = QLabel()
-        label.setTextInteractionFlags(Qt.TextSelectableByMouse)  # Allow text selection
-        
-        # Convert each tuple to a string and join them with newline characters
-        formatted_content = "\n".join("\n".join(item) for item in clipboard_contents)
-      
-        # Set the text content of the QLabel widget
-        label.setText(formatted_content)
+        for credential in credentials:
+            self.row_layout = QHBoxLayout()
+            self.label = QLabel()
+            self.delete_button = QPushButton("x")
+            self.delete_button.setMaximumSize(12, 12)
+            # Delete credentials 
+            self.delete_button.clicked.connect(self.delete_credentials)
+            self.label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            w, u, p = credential[0], credential[1], credential[2]
+            formatted_content = f"WEBSITE: {w}\nUSERNAME: {u}\nPASSWORD: {p}\n"
+            self.label.setText(formatted_content)
 
-        # Add the QLabel widget to the layout
-        layout.addWidget(label)
+            self.row_layout.addWidget(self.delete_button)
+            self.row_layout.addWidget(self.label)
 
-        # Set the scrollable area as the central widget
-        self.setCentralWidget(self.scrollable_area)
+            self.row_layouts.append(self.row_layout)  # Add the row layout to the list
+            self.scroll_layout.addLayout(self.row_layout)
 
     def show_logins(self):
         # Retrieve login credentials from the database
@@ -265,8 +278,57 @@ class UserWindow(QMainWindow):
           self.add_cred.show()
         else:
           # Update the scrollable area with the login credentials
+          self.clear_scroll_layout()
           self.update_scrollable_content(credentials)
 
+    def add_credentials(self):
+        # Retrieve login credentials from the database
+        user = UserDBFuncs(self.database)
+        self.add_cred = addCredentials(self.username)
+        self.add_cred.show()
+
+    def delete_credentials(self, username):
+        clicked_button = self.sender()  # Get the delete button that was clicked
+        if clicked_button:
+          # Find the index of the clicked button
+          index = None
+        for i, row_layout in enumerate(self.row_layouts):
+            delete_button = row_layout.itemAt(0)
+            if delete_button and isinstance(delete_button.widget(), QPushButton) and clicked_button == delete_button.widget():
+                index = i
+                break
+
+        if index is not None:
+            row_layout = self.row_layouts[index]
+            label_widget = row_layout.itemAt(1).widget()  # Assuming the label is at index 1
+            credential_text = label_widget.text()
+
+            lines = credential_text.split('\n')  # Split text into lines
+            website = None
+            uname = None
+                
+            for line in lines:
+                parts = line.split(':')  # Split line into parts based on colon
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    if key == "WEBSITE":
+                        website = value
+                    elif key == "USERNAME":
+                            uname = value
+                    print(website, uname)
+                if website is not None and uname is not None:                    
+                    user = UserDBFuncs(self.database)
+                    if user.delete_login(self.username, website, uname):
+                      print(self.username, website, uname)
+                      print(f" second del button {delete_button}")
+                
+                #for i in range(len(self.row_layouts) - 1, -1, -1):
+                # Remove the credential layout at the determined index
+                self.clear_layout(self.row_layouts[index])
+                # Update the scroll area widget
+                self.scroll_content.setLayout(self.scroll_layout)
+                
 # Define the add credentials class
 class addCredentials(QDialog):
     def __init__(self, username, parent=None):
@@ -325,7 +387,6 @@ class addCredentials(QDialog):
             QMessageBox.information(None, "SUCCESS", "Website Credentials added successfully!!")
          # Accept the dialog and indicate successful user creation
           self.accept()
-
 
 # Define the Ui_LoginWindow class
 class Ui_LoginWindow(QMainWindow):
