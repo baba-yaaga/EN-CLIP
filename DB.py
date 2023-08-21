@@ -66,11 +66,8 @@ class UserDBFuncs:
     def delete_login(self, loggedInUser, website, uname):
         try:
             with sqlite3.connect(self.database) as connection:
-                print(loggedInUser, website, uname)
                 cursor = connection.cursor()
                 user_id = self.get_user(loggedInUser)
-                print(f"FROM DB.py{loggedInUser}, {website}, {uname}")
-                #input("Waiting...")
                 # delete a login from the Credentials table
                 cursor.execute("DELETE FROM Credentials WHERE loggedInUser = ? AND website_id = ? AND username = ?", (user_id, website, uname))
                 connection.commit()

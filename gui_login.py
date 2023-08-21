@@ -216,18 +216,17 @@ class UserWindow(QMainWindow):
         for content in self.clipboard_contents:
             if isinstance(content, str):  # If the content is text, create a QLabel with the text
                 label = QLabel(content)
+                label.setTextInteractionFlags(Qt.TextSelectableByMouse)  # Allow text selection
+                self.scroll_layout.addWidget(label)
             elif isinstance(content, QPixmap):  # If the content is an image, create a QLabel with the image
                 graphics_view = QGraphicsView()
                 scene = QGraphicsScene()
                 scene.addPixmap(content)
                 graphics_view.setScene(scene)
-                graphics_view.setDragMode(QGraphicsView.ScrollHandDrag)  # Enable dragging of the image
                 self.scroll_layout.addWidget(graphics_view)
             else:
                 continue  # Skip unsupported data types
         
-            label.setTextInteractionFlags(Qt.TextSelectableByMouse)  # Allow text selection
-            self.scroll_layout.addWidget(label)
 
         # Update the scroll area widget
         self.scroll_content.setLayout(self.scroll_layout)
@@ -273,7 +272,7 @@ class UserWindow(QMainWindow):
         user = UserDBFuncs(self.database)
         credentials = user.show_credentials(self.username)
         if not credentials:
-          QMessageBox.information(self, "Credentials Are Empty", "You haven't added any logins yet!!")
+          QMessageBox.information(self, "Logins Empty", "No Logins Exist!!")
           self.add_cred = addCredentials(self.username)
           self.add_cred.show()
         else:
@@ -316,18 +315,13 @@ class UserWindow(QMainWindow):
                         website = value
                     elif key == "USERNAME":
                             uname = value
-                    print(website, uname)
                 if website is not None and uname is not None:                    
                     user = UserDBFuncs(self.database)
                     if user.delete_login(self.username, website, uname):
-                      print(self.username, website, uname)
-                      print(f" second del button {delete_button}")
-                
-                #for i in range(len(self.row_layouts) - 1, -1, -1):
-                # Remove the credential layout at the determined index
-                self.clear_layout(self.row_layouts[index])
-                # Update the scroll area widget
-                self.scroll_content.setLayout(self.scroll_layout)
+                      # Remove the credential layout at the determined index
+                      self.clear_layout(self.row_layouts[index])
+                      # Update the scroll area widget
+                      self.scroll_content.setLayout(self.scroll_layout)
                 
 # Define the add credentials class
 class addCredentials(QDialog):
